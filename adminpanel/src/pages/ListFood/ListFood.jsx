@@ -1,17 +1,33 @@
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify'
+import './ListFood.css';
+import { deleteFood, getFoodList } from '../../service/foodservice';
+
+
 
 const ListFood = () => {
   const [list, setList] = useState([]);
-
   const fetchList = async () => {
-    const response = await  axios.get('http://localhost:8080/api/foods');
-    console.log(response.data);
-    if(response.status == 200) {
-      setList(response.data);
-    } else {
-      toast.error('Error while reading the foods')
+    try {
+      const data = await getFoodList();
+      setList(data);
+    } catch (error) {
+      toast.error('Error while reading the foods.');
+    }
+  }
+
+  const removeFood =  async(foodId) => {
+    try {
+      const deleted = await deleteFood(foodId);
+      if(deleted) {
+        toast.success('Food removed.');
+        await fetchList();
+      } else {
+        toast.error('Error while removing the foods.');
+      }
+    } catch (error) {
+      toast.error('Super Error while removing the foods.' + error);
     }
   }
 
@@ -28,6 +44,7 @@ const ListFood = () => {
               <th>Name</th>
               <th>Category</th>
               <th>Price</th>
+              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
@@ -40,9 +57,9 @@ const ListFood = () => {
                     </td>
                     <td>{item.name}</td>
                     <td>{item.category}</td>
-                    <td>฿ {item.price}</td>
+                    <td>฿{item.price}.00</td>
                     <td className='text-danger'>
-                      <i className='bi bi-x-circle-fill'></i>
+                      <i className='bi bi-x-circle-fill' onClick={() => removeFood(item.id)}></i>
                     </td>
                   </tr>
                 )
