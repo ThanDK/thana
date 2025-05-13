@@ -34,7 +34,7 @@ const AddFood = () => {
     <div className="mx-2 mt-2 "><div className="row mt-2"><div className="card col-md-4"><div className="card-body"><h2 className="mb-4">Add Food</h2><form onSubmit={onSubmitHandler}>
 
       <div className="mb-3">
-        <label htmlFor="image" className="form-label"><img src={image ? URL.createObjectURL(image) : assets.upload} alt="" width={98}/></label>
+        <label htmlFor="image" className="form-label"><img src={image ? URL.createObjectURL(image) : assets.upload} alt="" width={98}  style={{ cursor: 'pointer' }}/></label>
         <input ref={fileInputRef} type="file" className="form-control" id="image" hidden onChange={(e) => setImage(e.target.files[0])}/> {/* เพิ่ม ref */}
       </div>
 

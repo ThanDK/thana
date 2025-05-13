@@ -45,6 +45,7 @@ const ListFood = () => {
               <th>Category</th>
               <th>Price</th>
               <th>Delete</th>
+              <th>Edit</th>
             </tr>
           </thead>
           <tbody>
@@ -53,14 +54,18 @@ const ListFood = () => {
                 return (
                   <tr key = {index}>
                     <td>
-                      <img src={item.imageUrl} alt="" height={48} width={48} />
+                      <img src={item.imageUrl} alt="" height={48} width={48}/>
                     </td>
                     <td>{item.name}</td>
                     <td>{item.category}</td>
                     <td>฿{item.price}.00</td>
                     <td className='text-danger'>
-                      <i className='bi bi-x-circle-fill' onClick={() => removeFood(item.id)}></i>
+                      <i className='bi bi-x-circle-fill' onClick={() => removeFood(item.id)} style={{ cursor: 'pointer' }}></i>
                     </td>
+                      <td className='text-primary'>
+                       <i className="bi bi-pencil-fill" onClick={() => editFood(item.id)} style={{ cursor: 'pointer' }}></i>
+                    </td>
+                    
                   </tr>
                 )
               })
