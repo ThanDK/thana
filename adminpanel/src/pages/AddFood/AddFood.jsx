@@ -51,7 +51,13 @@ const AddFood = () => {
       <div className="mb-3">
         <label htmlFor="category" className="form-label">Categoty</label>
         <select name="category" id="category" className='form-control' onChange={onChangeHandler} value={data.category}>
-          <option value="Biryani">Biryani</option><option value="Cake">Cake</option><option value="Burger">Burger</option><option value="Pizza">Pizza</option><option value="Rolls">Rolls</option><option value="Salad">Salad</option><option value="Ice Cream">Ice Cream</option>
+          <option value="Biryani">Biryani</option>
+          <option value="Cake">Cake</option>
+          <option value="Burger">Burger</option>
+          <option value="Pizza">Pizza</option>
+          <option value="Rolls">Rolls</option>
+          <option value="Salad">Salad</option>
+          <option value="Ice Cream">Ice Cream</option>
         </select>
       </div>
 
