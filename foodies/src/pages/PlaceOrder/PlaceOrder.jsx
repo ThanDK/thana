@@ -4,7 +4,16 @@ import { StoreContext } from '../../context/StoreContext';
 
 const PlaceOrder = () => {
   
-  const { provinces } = useContext(StoreContext); 
+  const { provinces, foodList, quantities, setQuantities } = useContext(StoreContext); 
+      //cart items
+  const cartItems = foodList.filter(food => quantities[food.id]>0);
+
+    //calculation
+  const subtotal = cartItems.reduce((acc, food) => acc + food.price * quantities[food.id], 0);
+  const shipping = subtotal === 0? 0.0: 10;
+  const tax = subtotal * 0.1; //10%
+  const total = subtotal + shipping + tax;
+  
   return (
     
     <div>
@@ -12,7 +21,7 @@ const PlaceOrder = () => {
       <div className="container">
         <main>
         <div className="py-5 text-center">
-          <img className="d-block mx-auto mb-4" src={assets.logo} alt="" width="98" height="98"/>
+          <img className="d-block mx-auto" src={assets.logo} alt="" width="78" height="78"/>
         </div>
           <div className="row g-5">
             {/* Order Summary / Cart Details Column (Right side on md and up) */}
@@ -20,37 +29,29 @@ const PlaceOrder = () => {
               {/* Cart Header */}
               <h4 className="d-flex justify-content-between align-items-center mb-3">
                 <span className="text-primary">Your cart</span>
-                <span className="badge bg-primary rounded-pill">3</span> {/* Example item count */}
+                <span className="badge bg-primary rounded-pill">
+                  {cartItems.length}
+                </span> 
               </h4>
               {/* List of Cart Items */}
               <ul className="list-group mb-3">
-                {/* Example Cart Item 1 */}
 
-                <li className="list-group-item d-flex justify-content-between lh-sm">
-                  <div>
-                    <h6 className="my-0">Product name</h6>
-                    <small className="text-body-secondary">Brief description</small>
-                  </div>
-                  <span className="text-body-secondary">$12</span>
+                {/*Cart*/}
+                {cartItems.map(item => (
+                  <li className="list-group-item d-flex justify-content-between lh-sm">
+                    <div>
+                        <img
+                          src={item.imageUrl}  
+                          style={{ width: '50px', height: '50px', objectFit: 'cover', marginRight: '10px', borderRadius: '4px' }}
+                        />
+                      <h6 className="my-0">{item.name}</h6>
+                      <small className="text-body-secondary">
+                        Quantity: {quantities[item.id]}
+                      </small>
+                    </div>
+                    <span className="text-body-secondary">฿{item.price * quantities[item.id]}</span>
                 </li>
-
-                {/* Example Cart Item 2 */}
-                <li className="list-group-item d-flex justify-content-between lh-sm">
-                  <div>
-                    <h6 className="my-0">Second product</h6>
-                    <small className="text-body-secondary">Brief description</small>
-                  </div>
-                  <span className="text-body-secondary">$8</span>
-                </li>
-
-                {/* Example Cart Item 3 */}
-                <li className="list-group-item d-flex justify-content-between lh-sm">
-                  <div>
-                    <h6 className="my-0">Third item</h6>
-                    <small className="text-body-secondary">Brief description</small>
-                  </div>
-                  <span className="text-body-secondary">$5</span>
-                </li>
+                ))}
 
                 {/* Total Amount */}
                 <li className="list-group-item d-flex justify-content-between">
@@ -59,9 +60,11 @@ const PlaceOrder = () => {
                 </li>
 
               </ul>
+              <form>
                 <button className="w-100 btn btn-primary btn-lg" type="submit">
                     Continue to checkout
                 </button>
+              </form>
             </div>
 
             {/* Billing Address and Payment Form Column (Left side on md and up) */}
@@ -74,12 +77,12 @@ const PlaceOrder = () => {
                   {/* First Name Input Field */}
                   <div className="col-sm-6">
                     <label htmlFor="firstName" className="form-label">First name</label>
-                    <input type="text" className="form-control" id="firstName" placeholder="" value="" required />
+                    <input type="text" className="form-control" id="firstName" placeholder="John" value="" required />
                   </div>
                   {/* Last Name Input Field */}
                   <div className="col-sm-6">
                     <label htmlFor="lastName" className="form-label">Last name</label>
-                    <input type="text" className="form-control" id="lastName" placeholder="" value="" required />
+                    <input type="text" className="form-control" id="lastName" placeholder="Doe" value="" required />
                   </div>
                   {/* Email Input Field */}
                   <div className="col-12">
@@ -97,7 +100,7 @@ const PlaceOrder = () => {
                   {/* Address Line 1 Input Field */}
                   <div className="col-12">
                     <label htmlFor="address" className="form-label">Address</label>
-                    <input type="text" className="form-control" id="address" placeholder="1234 Main St" required />
+                      <textarea className="form-control" id="address" placeholder="1234 Main St" rows="2" required></textarea>
                   </div>
                   {/* Country Select Field */}
                   <div className="col-md-5">
