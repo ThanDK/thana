@@ -1,8 +1,10 @@
 import React, { useContext } from 'react'
 import './Cart.css';
 import { StoreContext } from '../../context/StoreContext';
-import { Link } from 'react-router-dom';
+import { Link,useNavigate } from 'react-router-dom';
+
 const Cart = () => {
+    const navigate = useNavigate();
     const {foodList, increaseQty, decreaseQty, quantities, removeFromCart} = useContext(StoreContext);
     //cart items
     const cartItems = foodList.filter(food => quantities[food.id]>0);
@@ -13,7 +15,7 @@ const Cart = () => {
     const tax = subtotal * 0.1; //10%
     const total = subtotal + shipping + tax;
 
-  return (
+    return (
     <div className="container py-5">
       <h1 className="mb-5">Your Shopping Cart</h1>
       <div className="row">
@@ -24,57 +26,44 @@ const Cart = () => {
               <p>Your cart is empty.</p>
             ) : (
               <div className="card mb-4">
-              <div className="card-body">
+                <div className="card-body">
+                  {cartItems.map((food) => (
+                    <div className="row cart-item mb-3" key={food.id}>
+                      <div className="col-md-3">
+                        <img src={food.imageUrl || "https://via.placeholder.com/100"} alt={food.name} className="img-fluid rounded" width={100} />
+                      </div>
+                      <div className="col-md-5">
+                        <h5 className="card-title">{food.name}</h5>
+                        <p className="text-muted">Category: {food.category}</p>
+                      </div>
+                      <div className="col-md-2">
+                        <div className="input-group">
+                          {/* --- MODIFIED BUTTON (one-liner) --- */}
+                          <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => decreaseQty(food.id)}>-</button>
 
-              {cartItems.map((food) => (
-                <div className="row cart-item mb-3" key={food.id}>
-                  <div className="col-md-3">
-                    <img src={food.imageUrl || "https://via.placeholder.com/100"} alt={food.name} className="img-fluid rounded" width={100}/>
-                  </div>
-                  <div className="col-md-5">
-                    <h5 className="card-title">{food.name}</h5>
-                    <p className="text-muted">Category: {food.category}</p>
-                  </div>
-                  <div className="col-md-2">
-                    <div className="input-group">
+                          <input
+                            style={{ maxWidth: "100px" }}
+                            type="text"
+                            className="form-control form-control-sm text-center quantity-input"
+                            value={quantities[food.id]}
+                            readOnly
+                          />
 
-                      <button 
-                        className="btn btn-outline-secondary btn-sm" 
-                        type="button"
-                        onClick={() => decreaseQty(food.id)}>-</button>
+                          {/* --- MODIFIED BUTTON (one-liner) --- */}
+                          <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => increaseQty(food.id)}>+</button>
+                        </div>
+                      </div>
 
-
-                      <input 
-                        style={{ maxWidth: "100px" }} 
-                        type="text" 
-                        className="form-control form-control-sm text-center quantity-input"
-                        value={quantities[food.id]}
-                        readOnly
-                      />
-
-
-                      <button 
-                        className="btn btn-outline-secondary btn-sm" 
-                        type="button"
-                        onClick={() => increaseQty(food.id)}>+</button>
-
+                      <div className="col-md-2 text-end">
+                        <p className="fw-bold">฿{(food.price * quantities[food.id]).toFixed(2)}</p>
+                        {/* --- MODIFIED BUTTON (one-liner) --- */}
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => removeFromCart(food.id)}><i className="bi bi-trash"></i></button>
+                      </div>
+                      <hr className="mt-3" /> {/* Added mt-3 for better spacing after hr */}
                     </div>
-                  </div>
-
-                  <div className="col-md-2 text-end">
-                    <p className="fw-bold">฿{(food.price * quantities[food.id]).toFixed(2)}</p>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => removeFromCart(food.id)}>
-                      <i className="bi bi-trash"></i>
-                    </button>
-                  </div>
-                  <hr />
+                  ))}
                 </div>
-              ))}
-
-              
-
               </div>
-            </div>
             )
           }
           {/* Continue Shopping Button */}
@@ -95,34 +84,26 @@ const Cart = () => {
               </div>
               <div className="d-flex justify-content-between mb-3">
                 <span>Shipping</span>
-                <span>฿{subtotal === 0 ? 0.0 : shipping.toFixed(2)}</span>
+                <span>฿{subtotal === 0 ? 0.00.toFixed(2) : shipping.toFixed(2)}</span>
               </div>
               <div className="d-flex justify-content-between mb-3">
                 <span>Tax</span>
-                <span>&{tax.toFixed(2)}</span>
+                {/* Typo fixed here: was & should be ฿ */}
+                <span>฿{tax.toFixed(2)}</span>
               </div>
               <hr />
               <div className="d-flex justify-content-between mb-4">
                 <strong>Total</strong>
-                <strong>฿{subtotal === 0? 0.0 : total.toFixed(2)}</strong>
+                <strong>฿{subtotal === 0 ? 0.00.toFixed(2) : total.toFixed(2)}</strong>
               </div>
-              <button className="btn btn-primary w-100" disabled={cartItems.length === 0}>Proceed to Checkout</button>
-            </div>
-          </div>
-          {/* Promo Code */}
-          <div className="card mt-4">
-            <div className="card-body">
-              <h5 className="card-title mb-3">Apply Promo Code</h5>
-              <div className="input-group mb-3">
-                <input type="text" className="form-control" placeholder="Enter promo code" />
-                <button className="btn btn-outline-secondary" type="button">Apply</button>
-              </div>
+              {/* --- MODIFIED BUTTON (one-liner) --- */}
+              <button className="btn btn-primary w-100" disabled={cartItems.length === 0} onClick={() => navigate('/order')}>Proceed to Checkout</button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default Cart
+export default Cart; 
