@@ -1,18 +1,16 @@
 import {React, useContext} from 'react';
 import { assets } from "../../assets/assets"
 import { StoreContext } from '../../context/StoreContext';
+import { calculatCartTootals } from '../../util/cartUtils';
 
 const PlaceOrder = () => {
   
   const { provinces, foodList, quantities, setQuantities } = useContext(StoreContext); 
-      //cart items
+    //cart items
   const cartItems = foodList.filter(food => quantities[food.id]>0);
 
     //calculation
-  const subtotal = cartItems.reduce((acc, food) => acc + food.price * quantities[food.id], 0);
-  const shipping = subtotal === 0? 0.0: 10;
-  const tax = subtotal * 0.1; //10%
-  const total = subtotal + shipping + tax;
+    const {subtotal, shipping, tax, total} = calculatCartTootals(cartItems, quantities);
   
   return (
     
@@ -45,26 +43,48 @@ const PlaceOrder = () => {
                           style={{ width: '50px', height: '50px', objectFit: 'cover', marginRight: '10px', borderRadius: '4px' }}
                         />
                       <h6 className="my-0">{item.name}</h6>
-                      <small className="text-body-secondary">
+                      <span>
                         Quantity: {quantities[item.id]}
-                      </small>
+                      </span>
                     </div>
-                    <span className="text-body-secondary">฿{item.price * quantities[item.id]}</span>
+                    <span className="text-body-secondary">
+                      ฿{item.price * quantities[item.id]}
+                    </span>
                 </li>
                 ))}
+
+                <li className="list-group-item d-flex justify-content-between">
+                  <div>
+                    <span>Shipping</span>
+                  </div>
+                  <span className="text-body-secondary">
+                    ฿{subtotal === 0 ? 0.0 : shipping.toFixed(2)}
+                  </span>
+                </li>
+
+                <li className="list-group-item d-flex justify-content-between">
+                  <div>
+                    <span>Tax (10%)</span>
+                  </div>
+                  <span className="text-body-secondary">
+                    ฿{tax.toFixed(2)}
+                  </span>
+                </li>
 
                 {/* Total Amount */}
                 <li className="list-group-item d-flex justify-content-between">
                   <span>Total (THB)</span>
-                  <strong>฿20</strong>
+                  <strong>
+                    ฿{total.toFixed(2)}
+                  </strong>
                 </li>
 
               </ul>
-              <form>
+        
                 <button className="w-100 btn btn-primary btn-lg" type="submit">
                     Continue to checkout
                 </button>
-              </form>
+              
             </div>
 
             {/* Billing Address and Payment Form Column (Left side on md and up) */}
