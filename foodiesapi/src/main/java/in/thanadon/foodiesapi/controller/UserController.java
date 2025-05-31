@@ -5,6 +5,7 @@ import in.thanadon.foodiesapi.io.UserRespond;
 import in.thanadon.foodiesapi.service.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api")
 public class UserController {
 
-    private UserService userService;
+    private final UserService userService;
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
