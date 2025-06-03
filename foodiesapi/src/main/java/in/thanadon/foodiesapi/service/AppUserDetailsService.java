@@ -3,7 +3,6 @@ package in.thanadon.foodiesapi.service;
 import in.thanadon.foodiesapi.entity.UserEnitity;
 import in.thanadon.foodiesapi.repository.UserRepository;
 import lombok.AllArgsConstructor;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
