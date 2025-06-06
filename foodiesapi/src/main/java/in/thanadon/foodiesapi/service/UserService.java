@@ -6,4 +6,6 @@ import in.thanadon.foodiesapi.io.UserRespond;
 public interface UserService {
 
     UserRespond registerUser(UserRequest user);
+
+    String findByUserId();
 }

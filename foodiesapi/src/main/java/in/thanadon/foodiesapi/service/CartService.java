@@ -1,7 +1,12 @@
 package in.thanadon.foodiesapi.service;
 
-import org.springframework.stereotype.Service;
+import in.thanadon.foodiesapi.io.CartRequest;
+import in.thanadon.foodiesapi.io.CartResponse;
 
-@Service
 public interface CartService{
+
+    CartResponse addToCart(CartRequest request);
+
+    CartResponse getCart();
+
 }

@@ -21,4 +21,9 @@ public class CartEntity {
     private String userId;
     private Map<String, Integer> items = new HashMap<String, Integer>();
 
+    public CartEntity(String userId, Map<String, Integer> items) {
+        this.userId = userId;
+        this.items = items;
+    }
+
 }
