@@ -29,11 +29,15 @@ public class CartServiceImpl implements CartService {
         cart = cartRepository.save(cart);
         return convertToCartResponse(cart);
 
-    }*
+    }
 
     @Override
     public CartResponse getCart() {
-        return null;
+        String loggedInUserId = userService.findByUserId();
+        CartEntity entity = cartRepository.findByUserId(loggedInUserId)
+                .orElseGet(() -> new CartEntity(loggedInUserId, new HashMap<>()));
+        return convertToCartResponse(entity);
+
     }
 
     private CartResponse convertToCartResponse(CartEntity cartEntity) {
