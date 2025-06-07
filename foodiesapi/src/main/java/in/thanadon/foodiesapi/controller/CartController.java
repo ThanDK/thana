@@ -30,4 +30,20 @@ public class CartController {
     public CartResponse getCart() {
         return cartService.getCart();
     }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void clearCart() {
+        cartService.clearCart();
+    }
+
+
+    @PostMapping("/remove")
+    public CartResponse removeFromCart(@RequestBody CartRequest request) {
+        String foodId = request.getFoodId();
+        if (foodId == null || foodId.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The value '0' is not a valid identifier for 'foodId'. Please provide a valid food ID.");
+        }
+        return cartService.removeFromCart(request);
+    }
 }
