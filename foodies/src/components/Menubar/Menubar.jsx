@@ -5,10 +5,18 @@ import { StoreContext } from '../../context/StoreContext';
 import './Menubar.css';
 
 const Menubar = () => {
+
   const [active,setActive] = useState('home');
-  const {quantities} = useContext(StoreContext);
+  const {quantities, token, setToken} = useContext(StoreContext);
   const uniqueItemsinCart = Object.values(quantities).filter(qty => qty > 0).length;
   const navigate = useNavigate();
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken("");
+    navigate("/")
+  }
+
   return (
     <nav className="navbar navbar-expand-lg bg-body-tertiary">
       <div className="container">
@@ -42,8 +50,26 @@ const Menubar = () => {
                 <span className='position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning'>{uniqueItemsinCart}</span>
               </div>
             </Link>
-            <button className='btn btn-outline-primary' onClick={() => navigate('/login')}>Login</button>
-            <button className='btn btn-outline-success' onClick={() => navigate('/Register')}>Register</button>
+              { !token ? (
+                  <>
+                      <button className='btn btn-outline-primary' onClick={() => navigate('/login')}>Login</button>
+                      <button className='btn btn-outline-success' onClick={() => navigate('/Register')}>Register</button>
+                  </> ) : ( 
+
+                      <div className='dropdown text-end'>                  
+                          {/* ADDED: The necessary attributes to the <a> tag to make it a dropdown trigger */}
+                          <a href="#" className="d-block link-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                              {/* I used a default profile icon from assets for this example */}
+                              <img src={assets.UserIcon} alt="mdo" width={32} height={32} className='rounded-circle'/>
+                          </a>
+                          <ul className='dropdown-menu text-small cursor-pointer'>
+                              <li className="dropdown-item" onClick={() => navigate('/myorders')}>Orders</li>
+                              <li className="dropdown-item" onClick={logout}>Logout</li>
+                          </ul>
+                      </div> 
+
+                  )
+                }
           </div>
         </div>
       </div>
