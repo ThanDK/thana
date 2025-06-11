@@ -24,4 +24,5 @@ public class OrderEntity {
     private String receiptOrderId;
     private String paypalSignature;
     private String orderStatus;
+
 }

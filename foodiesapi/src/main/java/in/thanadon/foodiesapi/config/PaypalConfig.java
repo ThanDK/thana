@@ -15,16 +15,16 @@ public class PaypalConfig {
 
     @Value("${paypal.client.id}")
     private String clientId;
+
     @Value("${paypal.client.secret}")
     private String clientSecret;
+
     @Value("${paypal.mode}")
     private String mode;
 
     @Bean
     public Map<String, String> payPalSDKConfig() {
-        Map<String, String> config = new HashMap<String, String>();
-        config.put("mode", mode);
-        return config;
+        return Map.of("mode", mode);
     }
 
     @Bean
@@ -33,14 +33,14 @@ public class PaypalConfig {
     }
 
     @Bean
-    public APIContext apiContext() {
-        APIContext context = null;
+    public APIContext apiContext(OAuthTokenCredential credential) {
         try {
-            context = new APIContext(oAuthTokenCredential().getAccessToken());
+            APIContext context = new APIContext(credential.getAccessToken());
+            context.setConfigurationMap(payPalSDKConfig());
+            return context;
         } catch (PayPalRESTException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to initialize PayPal API context", e);
         }
-        context.setConfigurationMap(payPalSDKConfig());
-        return context;
     }
 }
+
