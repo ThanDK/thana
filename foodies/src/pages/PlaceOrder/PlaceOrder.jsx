@@ -2,10 +2,12 @@ import {React, useContext} from 'react';
 import { assets } from "../../assets/assets"
 import { StoreContext } from '../../context/StoreContext';
 import { calculatCartTootals } from '../../util/cartUtils';
+import { Link,useNavigate } from 'react-router-dom';
 
 const PlaceOrder = () => {
   
   const { provinces, foodList, quantities, setQuantities } = useContext(StoreContext); 
+  const navigate = useNavigate();
     //cart items
   const cartItems = foodList.filter(food => quantities[food.id]>0);
 
@@ -81,7 +83,7 @@ const PlaceOrder = () => {
 
               </ul>
         
-                <button className="w-100 btn btn-primary btn-lg" type="submit">
+                <button className="w-100 btn btn-primary btn-lg" type="submit" onClick={() => navigate('/confirm')}>
                     Continue to checkout
                 </button>
               
