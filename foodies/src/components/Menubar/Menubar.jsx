@@ -7,14 +7,16 @@ import './Menubar.css';
 const Menubar = () => {
 
   const [active,setActive] = useState('home');
-  const {quantities, token, setToken} = useContext(StoreContext);
+  const {quantities, token, setToken, setQuantities} = useContext(StoreContext);
   const uniqueItemsinCart = Object.values(quantities).filter(qty => qty > 0).length;
   const navigate = useNavigate();
 
   const logout = () => {
     localStorage.removeItem("token");
     setToken("");
-    navigate("/")
+    setQuantities({});
+    navigate("/");
+
   }
 
   return (

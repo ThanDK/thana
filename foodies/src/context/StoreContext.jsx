@@ -1,5 +1,7 @@
 import { createContext, useEffect, useState } from "react";
 import { fetchFoodList, fetchThaiProvinces } from "../service/foodService";
+import axios from "axios";
+import { addToCart, getCartData } from "../service/cartService";
 
 export const StoreContext = createContext(null);
 
@@ -10,12 +12,19 @@ export const StoreContextProvider = (props) => {
     const [token, setToken] = useState("");
 
   
-    const increaseQty = (foodId) => {
+    const increaseQty = async (foodId) => {
         setQuantities((prev) => ({ ...prev, [foodId]: (prev[foodId] || 0) + 1 }));
+        await addToCart(foodId, token)
     };
-    const decreaseQty = (foodId) => {
-        setQuantities((prev) => ({ ...prev, [foodId]: prev[foodId] > 0 ? prev[foodId] - 1 : 0 }));
+
+    const decreaseQty = async (foodId) => {
+        setQuantities((prev) => ({ 
+            ...prev, 
+            [foodId]: prev[foodId] > 0 ? prev[foodId] - 1 : 0 
+        }));
+        await removeFromCart(foodId, token);
     };
+
     const removeFromCart = (foodId) => {
         setQuantities((prevQuantities) => {
             const updateQuantities = { ...prevQuantities };
@@ -24,6 +33,11 @@ export const StoreContextProvider = (props) => {
         });
     };
 
+    const loadCartData = async (token)=> {
+        const items = await getCartData(token);
+        setQuantities(items);
+    }        
+    
     const contextValue = {
         foodList,
         increaseQty,
@@ -32,7 +46,9 @@ export const StoreContextProvider = (props) => {
         removeFromCart,
         provinces,
         token,
-        setToken
+        setToken,
+        setQuantities,
+        loadCartData
     };
 
     useEffect(() => {
@@ -42,6 +58,7 @@ export const StoreContextProvider = (props) => {
                 setFoodList(data || []); 
                 if(localStorage.getItem('token')) {
                     setToken(localStorage.getItem("token"));
+                    await loadCartData(localStorage.getItem("token"));
                 }
             } catch (error) {
                 console.error("Failed to fetch food list:", error);
