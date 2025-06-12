@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-
+import org.springframework.http.HttpMethod;
 import java.util.List;
 
 @Configuration
@@ -37,8 +37,12 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/register", "/api/login", "/api/foods/**", "/api/payment/**")
-                        .permitAll().anyRequest().authenticated())
+                // --- THIS IS THE CORRECTED PART ---
+                .authorizeHttpRequests(auth -> auth
+                        // Endpoints that are always public
+                        .requestMatchers("/api/register", "/api/login", "/api/foods/**", "/api/orders/all","/api/orders/status/**").permitAll()
+                        .anyRequest().authenticated()
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

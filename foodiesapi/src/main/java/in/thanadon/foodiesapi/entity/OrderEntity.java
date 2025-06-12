@@ -23,6 +23,7 @@ public class OrderEntity {
     private String paymentStatus;
     private String paypalOrderId;
     private String paypalSignature;
+    private String paypalPaymentId;
     private String orderStatus;
 
 }

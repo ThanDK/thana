@@ -17,4 +17,5 @@ public class OrderResponse {
     private String paypalOrderId;
     private String orderStatus;
     private String approvalUrl;
+    private List<OrderItem> orderedItems;
 }

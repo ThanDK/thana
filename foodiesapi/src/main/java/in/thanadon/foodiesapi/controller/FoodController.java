@@ -95,6 +95,8 @@ public class FoodController {
     public FoodRespond readFood(@PathVariable String id) {
         return foodService.readFood(id);
     }
+
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFood(@PathVariable String id) {

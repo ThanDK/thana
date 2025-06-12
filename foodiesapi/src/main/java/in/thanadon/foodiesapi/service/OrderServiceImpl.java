@@ -6,14 +6,18 @@ import com.paypal.base.rest.PayPalRESTException;
 import in.thanadon.foodiesapi.entity.OrderEntity;
 import in.thanadon.foodiesapi.io.OrderRequest;
 import in.thanadon.foodiesapi.io.OrderResponse;
+import in.thanadon.foodiesapi.io.RetryPaymentResponse;
 import in.thanadon.foodiesapi.repository.OrderRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
+/**
+ * Service implementation for handling all order and payment logic.
+ */
 @Service
 @AllArgsConstructor
 public class OrderServiceImpl implements OrderService {
@@ -22,92 +26,239 @@ public class OrderServiceImpl implements OrderService {
     private final APIContext apiContext;
     private final UserService userService;
 
-    // These are no longer needed here, as they will be passed in from the Controller.
-    // private static final String CANCEL_URL = "...";
-    // private static final String SUCCESS_URL = "...";
-
+    // PayPal payment constants
     private static final String PAYMENT_CURRENCY = "THB";
     private static final String PAYMENT_METHOD = "paypal";
-    private static final String PAYMENT_INTENT = "sale";
+    private static final String PAYMENT_INTENT = "sale"; // "sale" means the payment is captured immediately.
 
+    /**
+     * Creates a new order in the database and initiates a corresponding payment with PayPal.
+     * The process involves saving the order locally first to generate an ID, then creating
+     * a payment on PayPal's side.
+     *
+     * @param request    The order details from the client.
+     * @param cancelUrl  The URL to redirect to if the user cancels the payment on PayPal's site.
+     * @param successUrl The URL to redirect to if the user successfully approves the payment.
+     * @return An OrderResponse containing the created order's details and the PayPal approval URL.
+     */
     @Override
-    // The signature is now correct with the new parameters.
     public OrderResponse createOrderWithPayment(OrderRequest request, String cancelUrl, String successUrl) {
-        // Step 1: Convert request to an entity and set the user ID.
+        // Step 1: Create the entity and set initial details.
         OrderEntity newOrder = convertToEntity(request);
-        String loggedInUserId = userService.findByUserId();
-        newOrder.setUserId(loggedInUserId);
-        newOrder.setPaymentStatus("PENDING"); // Set initial payment status
+        newOrder.setUserId(userService.findByUserId());
+        newOrder.setPaymentStatus("PENDING"); // The initial status is PENDING until payment is confirmed.
 
-        // Step 2: First save. This is identical to your Razorpay flow.
+        // Step 2: Save the order to the DB *before* contacting PayPal to get a unique order ID for tracking.
         newOrder = orderRepository.save(newOrder);
 
         Payment createdPayment;
         try {
-            Amount amount = new Amount();
-            amount.setCurrency(PAYMENT_CURRENCY);
-            amount.setTotal(String.format("%.2f", newOrder.getAmount()));
-
-            Transaction transaction = new Transaction();
-            transaction.setDescription("FoodiesAPI Order: " + newOrder.getId());
-            transaction.setAmount(amount);
-
-            List<Transaction> transactions = new ArrayList<>();
-            transactions.add(transaction);
-
-            Payer payer = new Payer();
-            payer.setPaymentMethod(PAYMENT_METHOD);
-
-            Payment payment = new Payment();
-            payment.setIntent(PAYMENT_INTENT);
-            payment.setPayer(payer);
-            payment.setTransactions(transactions);
-
-            // Set the mandatory redirect URLs for PayPal's use.
-            RedirectUrls redirectUrls = new RedirectUrls();
-
-            // *** FIX: Use the method parameters 'cancelUrl' and 'successUrl' ***
-            // We append the internal orderId so your success/cancel controller can find the order.
-            redirectUrls.setCancelUrl(cancelUrl + "?orderId=" + newOrder.getId());
-            redirectUrls.setReturnUrl(successUrl + "?orderId=" + newOrder.getId());
-            payment.setRedirectUrls(redirectUrls);
-
-            // Step 4: Make the API call to PayPal.
-            createdPayment = payment.create(apiContext);
+            // Step 3: Call the shared helper method to create the payment object and call PayPal's API.
+            String description = "FoodiesAPI Order: " + newOrder.getId();
+            createdPayment = this.createPayPalPayment(newOrder, description, cancelUrl, successUrl);
 
         } catch (PayPalRESTException e) {
-            // If the API call fails, update the order status and notify the client.
+            // If the PayPal API call fails, we mark our internal order as FAILED.
             newOrder.setPaymentStatus("FAILED");
             orderRepository.save(newOrder);
             throw new RuntimeException("Failed to create PayPal payment: " + e.getMessage(), e);
         }
-
-        // Step 5: Update your local order with the PayPal Payment ID.
+        // Step 4: Link our local order with the PayPal-generated transaction ID.
         newOrder.setPaypalOrderId(createdPayment.getId());
-
-        // Step 6: Second save. This is identical to your Razorpay flow.
         orderRepository.save(newOrder);
-
-        // Step 7: Prepare the response for the client.
+        // Step 5: Prepare the final response for the client, including the crucial approval URL.
         OrderResponse response = convertToResponse(newOrder);
-
-        // Extract the approval_url. This is the URL your frontend must redirect the user to.
-        Optional<String> approvalUrl = createdPayment.getLinks().stream()
-                .filter(link -> "approval_url".equalsIgnoreCase(link.getRel()))
-                .map(Links::getHref)
-                .findFirst();
-
-        // This check is critical. Without an approval URL, the payment cannot proceed.
-        if (approvalUrl.isPresent()) {
-            response.setApprovalUrl(approvalUrl.get());
-        } else {
-            // This indicates a serious problem with the payment creation.
-            throw new RuntimeException("CRITICAL: PayPal approval URL not found in the response.");
-        }
-
+        response.setApprovalUrl(extractApprovalUrl(createdPayment));
         return response;
     }
 
+    /**
+     * Initiates a new PayPal payment for an existing order that was previously not completed.
+     *
+     * @param orderId    The ID of the existing order to retry.
+     * @param cancelUrl  The URL for payment cancellation.
+     * @param successUrl The URL for payment success.
+     * @return A response containing a fresh PayPal approval URL.
+     */
+    @Override
+    public RetryPaymentResponse retryOrderPayment(String orderId, String cancelUrl, String successUrl) {
+        // Step 1: Find the existing order.
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order with ID " + orderId + " not found."));
+
+        // CRITICAL: Prevent re-payment of an already completed order.
+        if ("COMPLETED".equalsIgnoreCase(order.getPaymentStatus())) {
+            throw new IllegalStateException("This order has already been paid for.");
+        }
+
+        Payment createdPayment;
+        try {
+            // Step 2: Call the same shared helper method to create a new payment session.
+            String description = "Retry for FoodiesAPI Order: " + order.getId();
+            createdPayment = this.createPayPalPayment(order, description, cancelUrl, successUrl);
+
+        } catch (PayPalRESTException e) {
+            order.setPaymentStatus("FAILED");
+            orderRepository.save(order);
+            throw new RuntimeException("Failed to create new PayPal payment for retry: " + e.getMessage(), e);
+        }
+        // Step 3: Update the order with the *new* PayPal ID and reset its status to PENDING.
+        order.setPaypalOrderId(createdPayment.getId());
+        order.setPaymentStatus("PENDING");
+        orderRepository.save(order);
+        // Step 4: Return the response containing the new URL.
+        return new RetryPaymentResponse(extractApprovalUrl(createdPayment));
+    }
+
+    /**
+     * Retrieves all orders for a specific user.
+     * @return A list of orders as OrderResponse DTOs.
+     */
+    @Override
+    public List<OrderResponse> getUserOrders() {
+        String loggedInUserId = userService.findByUserId();
+        List<OrderEntity> list = orderRepository.findByUserId(loggedInUserId);
+        return list.stream().map(entity -> convertToResponse(entity)).collect(Collectors.toList());
+    }
+
+    @Override
+    public void removeOrder(String orderId) {
+        orderRepository.deleteById(orderId);
+    }
+
+    @Override
+    public List<OrderResponse> getOrdersOfAllUser() {
+        List<OrderEntity> list = orderRepository.findAll();
+        return list.stream().map(entity -> convertToResponse(entity)).collect(Collectors.toList());
+    }
+
+    @Override
+    public void updateOrderStatus(String orderId, String status) {
+       OrderEntity entity = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order with ID " + orderId + " not found."));
+        entity.setPaymentStatus(status);
+        orderRepository.save(entity);
+    }
+
+    /**
+     * Executes a PayPal payment after the user has approved it on the PayPal website.
+     * This method is called by the success redirect endpoint.
+     *
+     * @param orderId   Our internal order ID.
+     * @param paymentId The PayPal payment ID received as a query parameter.
+     * @param payerId   The PayPal payer ID received as a query parameter.
+     * @return The updated OrderEntity with its payment status set to "COMPLETED".
+     */
+    @Override
+    public OrderEntity executeAndFinalizeOrder(String orderId, String paymentId, String payerId) {
+        try {
+            Payment payment = new Payment();
+            payment.setId(paymentId);
+
+            // The PayerID is proof from PayPal that the user approved the transaction.
+            PaymentExecution paymentExecute = new PaymentExecution();
+            paymentExecute.setPayerId(payerId);
+
+            // Call the PayPal API to execute the payment (i.e., capture the funds).
+            Payment executedPayment = payment.execute(apiContext, paymentExecute);
+
+            // IMPORTANT: Verify that PayPal confirms the payment was 'approved'.
+            if (!"approved".equalsIgnoreCase(executedPayment.getState())) {
+                throw new RuntimeException("PayPal payment was not approved. Status: " + executedPayment.getState());
+            }
+
+            // Find our corresponding order in the local database.
+            OrderEntity order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new RuntimeException("CRITICAL ERROR: Order " + orderId + " not found in database after payment."));
+
+            // This is the most crucial step: Synchronize our DB with the successful payment.
+            order.setPaymentStatus("COMPLETED");
+            return orderRepository.save(order);
+
+        } catch (PayPalRESTException e) {
+            // This catches API errors during payment execution (e.g., payment already executed).
+            throw new RuntimeException("Failed to execute PayPal payment: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Updates an order's payment status to "CANCELLED".
+     * This is called by the cancel redirect endpoint.
+     *
+     * @param orderId The internal ID of the order to cancel.
+     */
+    @Override
+    public void cancelOrderPayment(String orderId) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found for ID: " + orderId));
+
+        // To prevent errors, only update the status if it's currently PENDING.
+        if ("PENDING".equalsIgnoreCase(order.getPaymentStatus())) {
+            order.setPaymentStatus("CANCELLED");
+            orderRepository.save(order);
+        }
+    }
+
+    //region Private Helper Methods
+
+    /**
+     * PRIVATE HELPER: Centralized logic to build a PayPal Payment object and create it via the API.
+     *
+     * @param order       The local order entity containing amount and ID.
+     * @param description The description for the PayPal transaction.
+     * @param cancelUrl   The URL for payment cancellation.
+     * @param successUrl  The URL for payment success.
+     * @return The created PayPal Payment object.
+     * @throws PayPalRESTException if the API call fails.
+     */
+    private Payment createPayPalPayment(OrderEntity order, String description, String cancelUrl, String successUrl) throws PayPalRESTException {
+        Amount amount = new Amount();
+        amount.setCurrency(PAYMENT_CURRENCY);
+        // Format the total to two decimal places as required by PayPal.
+        amount.setTotal(String.format("%.2f", order.getAmount()));
+
+        Transaction transaction = new Transaction();
+        transaction.setDescription(description);
+        transaction.setAmount(amount);
+
+        List<Transaction> transactions = new ArrayList<>();
+        transactions.add(transaction);
+
+        Payer payer = new Payer();
+        payer.setPaymentMethod(PAYMENT_METHOD);
+
+        Payment payment = new Payment();
+        payment.setIntent(PAYMENT_INTENT);
+        payment.setPayer(payer);
+        payment.setTransactions(transactions);
+
+        // Append our internal orderId to the callback URLs for tracking on return.
+        RedirectUrls redirectUrls = new RedirectUrls();
+        redirectUrls.setCancelUrl(cancelUrl + "?orderId=" + order.getId());
+        redirectUrls.setReturnUrl(successUrl + "?orderId=" + order.getId());
+        payment.setRedirectUrls(redirectUrls);
+
+        // This is the actual API call to PayPal.
+        return payment.create(apiContext);
+    }
+
+    /**
+     * PRIVATE HELPER: Extracts the mandatory `approval_url` from a PayPal Payment response.
+     *
+     * @param payment The PayPal Payment object returned from the API.
+     * @return The approval URL string.
+     */
+    private String extractApprovalUrl(Payment payment) {
+        return payment.getLinks().stream()
+                .filter(link -> "approval_url".equalsIgnoreCase(link.getRel()))
+                .map(Links::getHref)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("CRITICAL: PayPal approval URL not found in the response."));
+    }
+
+    /**
+     * PRIVATE HELPER: Maps an OrderEntity to an OrderResponse DTO.
+     */
     private OrderResponse convertToResponse(OrderEntity order) {
         return OrderResponse.builder()
                 .id(order.getId())
@@ -119,9 +270,13 @@ public class OrderServiceImpl implements OrderService {
                 .orderStatus(order.getOrderStatus())
                 .email(order.getEmail())
                 .phoneNumber(order.getPhoneNumber())
+                .orderedItems(order.getOrderItems())
                 .build();
     }
 
+    /**
+     * PRIVATE HELPER: Maps an OrderRequest DTO to an OrderEntity.
+     */
     private OrderEntity convertToEntity(OrderRequest request) {
         return OrderEntity.builder()
                 .userAddress(request.getUserAddress())
@@ -132,48 +287,5 @@ public class OrderServiceImpl implements OrderService {
                 .orderStatus(request.getOrderStatus())
                 .build();
     }
-
-    @Override
-    public OrderEntity executeAndFinalizeOrder(String orderId, String paymentId, String payerId) {
-        try {
-            // Step 1: Create a PayPal Payment object to execute.
-            Payment payment = new Payment();
-            payment.setId(paymentId);
-
-            PaymentExecution paymentExecute = new PaymentExecution();
-            paymentExecute.setPayerId(payerId);
-
-            // Step 2: Call the PayPal API to execute the payment.
-            Payment executedPayment = payment.execute(apiContext, paymentExecute);
-
-            // Step 3: Check if PayPal actually approved the payment.
-            if (!"approved".equalsIgnoreCase(executedPayment.getState())) {
-                throw new RuntimeException("PayPal payment was not approved. Status: " + executedPayment.getState());
-            }
-
-            // Step 4: If approved, find YOUR order in YOUR database.
-            OrderEntity order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new RuntimeException("CRITICAL ERROR: Order " + orderId + " not found in database."));
-
-            // Step 5: THIS IS THE FIX. Update the status of your order.
-            order.setPaymentStatus("COMPLETED");
-
-            // Step 6: Save the updated order with the "COMPLETED" status back to your database.
-            return orderRepository.save(order);
-
-        } catch (PayPalRESTException e) {
-            // This catches errors from the PayPal API call itself.
-            throw new RuntimeException("Failed to execute PayPal payment: " + e.getMessage(), e);
-        }
-    }
-
-    // This method is fine, but make sure it has the @Override annotation.
-    @Override
-    public void cancelOrderPayment(String orderId) {
-        OrderEntity order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found for ID: " + orderId));
-
-        order.setPaymentStatus("CANCELLED");
-        orderRepository.save(order);
-    }
+    //endregion
 }
