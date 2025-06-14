@@ -1,18 +1,66 @@
-import {React, useContext} from 'react';
+import {React, useContext, useState} from 'react';
 import { assets } from "../../assets/assets"
 import { StoreContext } from '../../context/StoreContext';
 import { calculatCartTootals } from '../../util/cartUtils';
 import { Link,useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const PlaceOrder = () => {
   
-  const { provinces, foodList, quantities, setQuantities } = useContext(StoreContext); 
+  const { provinces, foodList, quantities, setQuantities, token } = useContext(StoreContext); 
+
+  const [data, setData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    address: '',
+    country: '',
+    province: '',
+    zip: '',
+  })
+
+  const onChangeHandler = (event) => {
+    const name = event.target.name;
+    const value = event.target.value;
+    setData(data => ({...data, [name]: value}));
+  }
+  
+  const onSubmitHandler = async (event) => {
+    event.preventDefault();
+    const orderData = {
+      userAddress: `${data.firstName} ${data.lastName}, ${data.address}, ${data.country}, ${data.province}, ${data.zip} `,
+      phoneNumber: data.phoneNumber,
+      email: data.email,
+      orderedItems: cartItems.map(item => ({
+        foodId: item.foodId,
+        quantity: quantities[item.id],
+        price: item.price * quantities[item.id],
+        category: item.category,
+        imageUrl: item.imageUrl,
+        description: item.description,
+        name: item.name
+    })),
+      amount: total.toFixed(2),
+      orderStatus: "Preparing"
+    };
+    try {
+      const response = await axios.post('http://localhost:8080/api/orders', orderData, {headers: {'Authorization': `Bearer ${token}` }});
+      console.log(response.status)
+      if(response.status === 200 && response.data.approvalUrl) {
+        toast.success("Post SUCCESS payment linke: " + response.data.approvalUrl)
+      }
+    } catch (error) {
+        toast.error("Error error block" + error);
+    }
+  };
   const navigate = useNavigate();
     //cart items
   const cartItems = foodList.filter(food => quantities[food.id]>0);
 
     //calculation
-    const {subtotal, shipping, tax, total} = calculatCartTootals(cartItems, quantities);
+   const {subtotal, shipping, tax, total} = calculatCartTootals(cartItems, quantities);
   
   return (
     
@@ -82,10 +130,7 @@ const PlaceOrder = () => {
                 </li>
 
               </ul>
-        
-                <button className="w-100 btn btn-primary btn-lg" type="submit" onClick={() => navigate('/confirm')}>
-                    Continue to checkout
-                </button>
+    
               
             </div>
 
@@ -94,48 +139,110 @@ const PlaceOrder = () => {
               {/* Billing Address Section Title */}
               <h4 className="mb-3">Billing address</h4>
               {/* Billing Address Form */}
-              <form className="needs-validation" noValidate>
+              <form className="needs-validation" onSubmit={onSubmitHandler}>
                 <div className="row g-3">
                   {/* First Name Input Field */}
                   <div className="col-sm-6">
                     <label htmlFor="firstName" className="form-label">First name</label>
-                    <input type="text" className="form-control" id="firstName" placeholder="John" value="" required />
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      id="firstName" 
+                      placeholder="John" 
+                      required 
+                      name="firstName" 
+                      onChange={onChangeHandler} 
+                      value={data.firstName}
+                    />
                   </div>
                   {/* Last Name Input Field */}
                   <div className="col-sm-6">
                     <label htmlFor="lastName" className="form-label">Last name</label>
-                    <input type="text" className="form-control" id="lastName" placeholder="Doe" value="" required />
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      id="lastName" 
+                      placeholder="Doe"  
+                      required 
+                      name="lastName"
+                      onChange={onChangeHandler}
+                      value={data.lastName}
+                    />
                   </div>
                   {/* Email Input Field */}
                   <div className="col-12">
                     <label htmlFor="email" className="form-label">Email</label>
                     <div className="input-group has-validation">
                       <span className="input-group-text">@</span>
-                      <input type="text" className="form-control" id="email" placeholder="email" required />
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        id="email" 
+                        placeholder="email" 
+                        required 
+                        name="email"
+                        onChange={onChangeHandler}
+                        value={data.email}
+                      />
                     </div>
                   </div>
                   {/* Phone number */}
                   <div className="col-12">
                     <label htmlFor="phone" className="form-label">Phone Number</label>
-                    <input type="number" className="form-control" id="phone" placeholder="+66" required />
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      id="phone" 
+                      placeholder="+66" 
+                      required 
+                      name="phoneNumber"
+                      value={data.phoneNumber}
+                      onChange={onChangeHandler}
+                    />
                   </div>
                   {/* Address Line 1 Input Field */}
                   <div className="col-12">
                     <label htmlFor="address" className="form-label">Address</label>
-                      <textarea className="form-control" id="address" placeholder="1234 Main St" rows="2" required></textarea>
+                      <textarea 
+                        className="form-control" 
+                        id="address" 
+                        placeholder="1234 Main St" 
+                        rows="2" 
+                        required
+                        value={data.address}
+                        name="address"
+                        onChange={onChangeHandler}
+                      />       
                   </div>
                   {/* Country Select Field */}
                   <div className="col-md-5">
-                    <label htmlFor="country" className="form-label">Country</label>
-                    <select className="form-select" id="country" required>
+                    <label htmlFor="country" className="form-label">
+                      Country
+                    </label>
+                    <select 
+                      className="form-select" 
+                      id="country" 
+                      required 
+                      name='country' 
+                      value={data.country} 
+                      onChange={onChangeHandler}
+                    >
+                      <option value="">เลือกประเทศ...</option>
                       <option selected>ประเทศไทย</option>
                     </select>
                   </div>
                   {/* State Select Field */}
                   <div className="col-md-4">
-                    <label htmlFor="state" className="form-label">State</label>
-                    <select className="form-select" id="state" required>
-                      <option value="">จังหวัด...</option>
+                    <label htmlFor="province" className="form-label">State</label>
+                    <select 
+                      className="form-select" 
+                      id="province" 
+                      required
+                      name="province"
+                      value={data.state}
+                      onChange={onChangeHandler}
+                    >
+                      <option value="">เลือกจังหวัด...</option>
                       {provinces.map(province => (
                         <option key={province.id} value={province.name_th}>{province.name_th}</option>
                       ))}
@@ -144,12 +251,23 @@ const PlaceOrder = () => {
                   {/* Zip Code Input Field */}
                   <div className="col-md-3">
                     <label htmlFor="zip" className="form-label">Zip</label>
-                    <input type="text" className="form-control" id="zip" placeholder="" required />
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      id="zip" 
+                      placeholder="" 
+                      required 
+                      name="zip"
+                      value={data.zip}
+                      onChange={onChangeHandler}
+                    />
                   </div>
                 </div>
 
                 <hr className="my-4" />
-
+                <button className="w-100 btn btn-primary btn-lg" type="submit">
+                    Continue to checkout
+                </button>
               </form>
             </div>
           </div>
