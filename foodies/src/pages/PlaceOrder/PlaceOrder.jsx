@@ -55,11 +55,9 @@ const PlaceOrder = () => {
         toast.error("Error error block" + error);
     }
   };
-  const navigate = useNavigate();
-    //cart items
+
   const cartItems = foodList.filter(food => quantities[food.id]>0);
 
-    //calculation
    const {subtotal, shipping, tax, total} = calculatCartTootals(cartItems, quantities);
   
   return (
