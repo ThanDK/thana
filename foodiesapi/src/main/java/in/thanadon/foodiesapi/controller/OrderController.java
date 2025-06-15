@@ -11,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -20,7 +22,9 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
-
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+    
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest orderRequest, HttpServletRequest request) {
@@ -31,22 +35,28 @@ public class OrderController {
     }
 
     @GetMapping("/payment/success")
-    public ResponseEntity<String> paymentSuccess(
-            @RequestParam("orderId") String orderId,
-            @RequestParam("paymentId") String paymentId,
-            @RequestParam("PayerID") String payerId) {
+    public ResponseEntity<Void> paymentSuccess( // FIX: Changed return type to ResponseEntity<Void>
+                                                @RequestParam("orderId") String orderId,
+                                                @RequestParam("paymentId") String paymentId,
+                                                @RequestParam("PayerID") String payerId) {
         try {
             orderService.executeAndFinalizeOrder(orderId, paymentId, payerId);
-            return ResponseEntity.ok("Payment successful! Your order " + orderId + " has been updated.");
+            // FIX: Redirect the popup back to a success page on the frontend
+            String redirectUrl = frontendUrl + "/verify-payment?success=true&orderId=" + orderId;
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error processing payment: " + e.getMessage());
+            // FIX: Redirect the popup to a failure page on the frontend
+            String redirectUrl = frontendUrl + "/verify-payment?success=false";
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
         }
     }
 
     @GetMapping("/payment/cancel")
-    public ResponseEntity<String> paymentCancel(@RequestParam("orderId") String orderId) {
+    public ResponseEntity<Void> paymentCancel(@RequestParam("orderId") String orderId) { // FIX: Changed return type
         orderService.cancelOrderPayment(orderId);
-        return ResponseEntity.ok("Payment was cancelled for order " + orderId + ".");
+        // FIX: Redirect the popup to a "cancelled" page on the frontend
+        String redirectUrl = frontendUrl + "/verify-payment?success=false&cancelled=true";
+        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
     }
 
     @PostMapping("/retry-payment/{orderId}")
