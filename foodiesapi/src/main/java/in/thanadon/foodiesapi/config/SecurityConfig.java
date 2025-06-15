@@ -40,7 +40,10 @@ public class SecurityConfig {
                 // --- THIS IS THE CORRECTED PART ---
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints that are always public
-                        .requestMatchers("/api/register", "/api/login", "/api/foods/**", "/api/orders/all","/api/orders/status/**").permitAll()
+                        .requestMatchers("/api/register", "/api/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/foods/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/orders/payment/success", "/api/orders/payment/cancel").permitAll()
+                        .requestMatchers("/api/orders/all", "/api/orders/status/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
