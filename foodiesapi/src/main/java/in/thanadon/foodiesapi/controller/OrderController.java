@@ -24,7 +24,7 @@ public class OrderController {
     private final OrderService orderService;
     @Value("${app.frontend-url}")
     private String frontendUrl;
-    
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest orderRequest, HttpServletRequest request) {
