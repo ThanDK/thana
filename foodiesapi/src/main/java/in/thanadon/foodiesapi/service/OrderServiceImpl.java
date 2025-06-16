@@ -11,6 +11,7 @@ import in.thanadon.foodiesapi.io.RetryPaymentResponse;
 import in.thanadon.foodiesapi.repository.OrderRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final APIContext apiContext;
     private final UserService userService;
+    private final CartService cartService;
 
     // PayPal payment constants
     private static final String PAYMENT_CURRENCY = "THB";
@@ -184,13 +186,13 @@ public class OrderServiceImpl implements OrderService {
      * @return The updated OrderEntity with its payment status set to "COMPLETED".
      */
     @Override
+    @Transactional // Keep this annotation. It is still essential.
     public OrderEntity executeAndFinalizeOrder(String orderId, String paymentId, String payerId) {
         // Step 1: Find the order FIRST.
         OrderEntity order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("CRITICAL ERROR: Order " + orderId + " not found in database."));
 
         // Step 2: CRITICAL IDEMPOTENCY CHECK.
-        // If the order is already completed, do not re-process. Just return the existing state.
         if ("COMPLETED".equalsIgnoreCase(order.getPaymentStatus())) {
             System.out.println("Idempotency check: Order " + orderId + " is already completed. Skipping execution.");
             return order;
@@ -207,9 +209,13 @@ public class OrderServiceImpl implements OrderService {
                 throw new RuntimeException("PayPal payment was not approved. Status: " + executedPayment.getState());
             }
 
-            // Step 3: Now that PayPal confirmed, update our database.
+            // ✅ CORRECTED SEQUENCE ✅
+
+            // Step 3A: Update the order's status in memory.
             order.setPaymentStatus("COMPLETED");
-            return orderRepository.save(order);
+            OrderEntity savedOrder = orderRepository.save(order);
+            // Step 3D: Return the saved (and now committed) order.
+            return savedOrder;
 
         } catch (PayPalRESTException e) {
             // If execution fails, you might want to mark the order as FAILED.

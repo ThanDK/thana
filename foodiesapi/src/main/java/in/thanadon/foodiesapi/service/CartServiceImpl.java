@@ -41,7 +41,7 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public void clearCart() {
+    public void clearCartForCurrentUser() {
         String loggedInUserId = userService.findByUserId();
         cartRepository.deleteByUserId(loggedInUserId);
     }

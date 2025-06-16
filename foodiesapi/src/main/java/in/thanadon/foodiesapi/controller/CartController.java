@@ -34,7 +34,7 @@ public class CartController {
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void clearCart() {
-        cartService.clearCart();
+        cartService.clearCartForCurrentUser();
     }
 
 
