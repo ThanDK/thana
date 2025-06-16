@@ -4,6 +4,7 @@ import com.paypal.api.payments.*;
 import com.paypal.base.rest.APIContext;
 import com.paypal.base.rest.PayPalRESTException;
 import in.thanadon.foodiesapi.entity.OrderEntity;
+import in.thanadon.foodiesapi.io.OrderPaymentStatusResponse;
 import in.thanadon.foodiesapi.io.OrderRequest;
 import in.thanadon.foodiesapi.io.OrderResponse;
 import in.thanadon.foodiesapi.io.RetryPaymentResponse;
@@ -11,6 +12,7 @@ import in.thanadon.foodiesapi.repository.OrderRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,11 +48,10 @@ public class OrderServiceImpl implements OrderService {
         // Step 1: Create the entity and set initial details.
         OrderEntity newOrder = convertToEntity(request);
         newOrder.setUserId(userService.findByUserId());
-        newOrder.setPaymentStatus("PENDING"); // The initial status is PENDING until payment is confirmed.
+        newOrder.setPaymentStatus("PENDING");
 
         // Step 2: Save the order to the DB *before* contacting PayPal to get a unique order ID for tracking.
         newOrder = orderRepository.save(newOrder);
-
         Payment createdPayment;
         try {
             // Step 3: Call the shared helper method to create the payment object and call PayPal's API.
@@ -118,27 +119,60 @@ public class OrderServiceImpl implements OrderService {
     public List<OrderResponse> getUserOrders() {
         String loggedInUserId = userService.findByUserId();
         List<OrderEntity> list = orderRepository.findByUserId(loggedInUserId);
-        return list.stream().map(entity -> convertToResponse(entity)).collect(Collectors.toList());
+        return list.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
     public void removeOrder(String orderId) {
-        orderRepository.deleteById(orderId);
+        // Step 1: Get the ID of the currently authenticated user.
+        String currentUserId = userService.findByUserId();
+        // Step 2: Find the order by its ID AND verify that it belongs to the current user.
+        OrderEntity order = orderRepository.findByIdAndUserId(orderId, currentUserId)
+                .orElseThrow(() -> new RuntimeException("Order not found or you do not have permission to delete it."));
+        // Step 3: If the check passes, it is now safe to delete the order.
+        orderRepository.delete(order);
     }
 
     @Override
     public List<OrderResponse> getOrdersOfAllUser() {
         List<OrderEntity> list = orderRepository.findAll();
-        return list.stream().map(entity -> convertToResponse(entity)).collect(Collectors.toList());
+        return list.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
     public void updateOrderStatus(String orderId, String status) {
-       OrderEntity entity = orderRepository.findById(orderId)
+        OrderEntity entity = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order with ID " + orderId + " not found."));
-        entity.setPaymentStatus(status);
+        entity.setOrderStatus(status); // Corrected to update orderStatus
         orderRepository.save(entity);
     }
+
+    /**
+     * Retrieves the status of a specific order, but only if it belongs to the
+     * currently authenticated user. This prevents users from snooping on others' orders.
+     *
+     * @param orderId The ID of the order to check.
+     * @return An OrderStatusResponse DTO with the current statuses.
+     */
+    @Override
+    public OrderPaymentStatusResponse getOrderPaymentStatusForCurrentUser(String orderId){
+        // 1. Get the ID of the currently logged-in user.
+        String loggedInUserId = userService.findByUserId();
+
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order with ID " + orderId + " not found."));
+
+        if (!order.getUserId().equals(loggedInUserId)) {
+            try {
+                throw new AccessDeniedException("You do not have permission to view the status of this order.");
+            } catch (AccessDeniedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return new OrderPaymentStatusResponse(order.getId(), order.getPaymentStatus());
+    }
+
 
     /**
      * Executes a PayPal payment after the user has approved it on the PayPal website.
@@ -151,35 +185,40 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public OrderEntity executeAndFinalizeOrder(String orderId, String paymentId, String payerId) {
+        // Step 1: Find the order FIRST.
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("CRITICAL ERROR: Order " + orderId + " not found in database."));
+
+        // Step 2: CRITICAL IDEMPOTENCY CHECK.
+        // If the order is already completed, do not re-process. Just return the existing state.
+        if ("COMPLETED".equalsIgnoreCase(order.getPaymentStatus())) {
+            System.out.println("Idempotency check: Order " + orderId + " is already completed. Skipping execution.");
+            return order;
+        }
+
         try {
             Payment payment = new Payment();
             payment.setId(paymentId);
-
-            // The PayerID is proof from PayPal that the user approved the transaction.
             PaymentExecution paymentExecute = new PaymentExecution();
             paymentExecute.setPayerId(payerId);
-
-            // Call the PayPal API to execute the payment (i.e., capture the funds).
             Payment executedPayment = payment.execute(apiContext, paymentExecute);
 
-            // IMPORTANT: Verify that PayPal confirms the payment was 'approved'.
             if (!"approved".equalsIgnoreCase(executedPayment.getState())) {
                 throw new RuntimeException("PayPal payment was not approved. Status: " + executedPayment.getState());
             }
 
-            // Find our corresponding order in the local database.
-            OrderEntity order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new RuntimeException("CRITICAL ERROR: Order " + orderId + " not found in database after payment."));
-
-            // This is the most crucial step: Synchronize our DB with the successful payment.
+            // Step 3: Now that PayPal confirmed, update our database.
             order.setPaymentStatus("COMPLETED");
             return orderRepository.save(order);
 
         } catch (PayPalRESTException e) {
-            // This catches API errors during payment execution (e.g., payment already executed).
+            // If execution fails, you might want to mark the order as FAILED.
+            order.setPaymentStatus("FAILED");
+            orderRepository.save(order);
             throw new RuntimeException("Failed to execute PayPal payment: " + e.getMessage(), e);
         }
     }
+
 
     /**
      * Updates an order's payment status to "CANCELLED".

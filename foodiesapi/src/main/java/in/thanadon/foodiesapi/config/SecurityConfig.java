@@ -1,5 +1,4 @@
 package in.thanadon.foodiesapi.config;
-
 import in.thanadon.foodiesapi.filters.JwtAuthenticationFilter;
 import in.thanadon.foodiesapi.service.AppUserDetailsService;
 import lombok.AllArgsConstructor;
@@ -22,12 +21,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.http.HttpMethod;
 import java.util.List;
-
 @Configuration
 @EnableWebSecurity
 @AllArgsConstructor
 public class SecurityConfig {
-
     private final AppUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -37,13 +34,21 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                // --- THIS IS THE CORRECTED PART ---
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints that are always public
+                        // --- 1. PUBLIC ENDPOINTS ---
+                        // Anyone can register, log in, or view food items. This is correct.
                         .requestMatchers("/api/register", "/api/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/foods/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/orders/payment/success", "/api/orders/payment/cancel").permitAll()
-                        .requestMatchers("/api/orders/all", "/api/orders/status/**").permitAll()
+                        .requestMatchers("/api/orders/**").authenticated()
+                        // --- 2. ADMIN-ONLY ENDPOINTS (Most Secure) ---
+                        // Only users with the 'ADMIN' role can access these.
+                        // PERMITALL FOR TEST PURPOSE!!! WILL CHANGE LATER
+                        .requestMatchers("/api/orders/all").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/status/**").permitAll()
+
+
+
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -80,4 +85,5 @@ public class SecurityConfig {
         authProvider.setPasswordEncoder(passwordEncoder());
         return new ProviderManager(authProvider);
     }
+
 }

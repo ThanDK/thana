@@ -1,0 +1,148 @@
+/* Main page container to center the box */
+.verify-page {
+  min-height: 80vh; /* Takes up most of the screen */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f9fa; /* Light grey background */
+  padding: 2rem 1rem;
+}
+
+/* The main content box */
+.verify-box {
+  background-color: #ffffff;
+  padding: 2.5rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 550px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Space between header, body, footer */
+}
+
+/* Header section with icon and title */
+.verify-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.verify-icon {
+  width: 70px;
+  height: 70px;
+}
+
+.verify-header h2 {
+  font-size: 2.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.success-text {
+  color: #28a745; /* Bootstrap success green */
+}
+
+.failure-text {
+  color: #dc3545; /* Bootstrap danger red */
+}
+
+/* Body section with text and Order ID */
+.verify-body p {
+  font-size: 1.1rem;
+  color: #6c757d; /* Muted text color */
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+/* Special styling for the Order ID to make it stand out */
+.order-details {
+  background-color: #f1f3f5;
+  border: 1px dashed #ced4da;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.order-details p {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #495057;
+  font-weight: 500;
+}
+
+.order-details span {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0056b3; /* A strong blue */
+  letter-spacing: 1px;
+}
+
+
+/* Footer section with action buttons */
+.verify-footer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.verify-btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 50px; /* Pill-shaped buttons */
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 180px;
+}
+
+.verify-btn.primary {
+  background-color: #007bff; /* Bootstrap primary blue */
+  color: white;
+}
+
+.verify-btn.primary:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.verify-btn.secondary {
+  background-color: transparent;
+  color: #007bff;
+  border: 2px solid #007bff;
+}
+
+.verify-btn.secondary:hover {
+  background-color: #007bff;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+  margin: 0 auto;
+}
+
+.loading-text {
+  font-size: 1.2rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

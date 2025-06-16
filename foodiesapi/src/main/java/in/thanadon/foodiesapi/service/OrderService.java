@@ -1,6 +1,7 @@
 package in.thanadon.foodiesapi.service;
 
 import in.thanadon.foodiesapi.entity.OrderEntity;
+import in.thanadon.foodiesapi.io.OrderPaymentStatusResponse;
 import in.thanadon.foodiesapi.io.OrderRequest;
 import in.thanadon.foodiesapi.io.OrderResponse;
 import in.thanadon.foodiesapi.io.RetryPaymentResponse;
@@ -24,5 +25,8 @@ public interface OrderService {
     List<OrderResponse> getOrdersOfAllUser();
 
     void updateOrderStatus(String orderId, String status);
+
+    OrderPaymentStatusResponse getOrderPaymentStatusForCurrentUser(String orderId);
+
 }
 

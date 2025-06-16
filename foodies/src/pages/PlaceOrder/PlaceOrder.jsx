@@ -35,18 +35,18 @@ const PlaceOrder = () => {
 
     const cartItems = foodList.filter(food => quantities[food.id] > 0);
     
-    // FIX: Check 1: Ensure the cart is not empty before proceeding
+    // Check 1: Ensure the cart is not empty before proceeding
     if (cartItems.length === 0) {
       toast.error("Your cart is empty. Please add items to place an order.");
-      navigate("/cart"); // Redirect user to the cart page
+      navigate("/cart"); 
       return;
     }
 
-    // FIX: Check 2: Validate that all fields in the 'data' state are filled
+    // Check 2: Validate that all fields in the 'data' state are filled
     for (const key in data) {
         if (data[key] === "") {
             toast.error("Please fill in all the delivery information fields.");
-            return; // Exit the function if any field is empty
+            return; 
         }
     }
 
@@ -75,15 +75,19 @@ const PlaceOrder = () => {
       const response = await axios.post('http://localhost:8080/api/orders', orderData, {headers: {'Authorization': `Bearer ${token}` }});
       if(response.status === 200 && response.data.approvalUrl) {
         toast.success("Order placed successfully! Redirecting to payment...");
+
         window.location.href = response.data.approvalUrl;
       } else {
+
         toast.error("An unexpected error occurred.");
+        setIsProcessing(false); 
       }
     } catch (error) {
+
         toast.error("Failed to place order. " + (error.response?.data?.message || error.message));
-    } finally {
-      setIsProcessing(false);
-    }
+        setIsProcessing(false); 
+    } 
+
   };
 
   const cartItems = foodList.filter(food => quantities[food.id] > 0);
@@ -155,7 +159,7 @@ const PlaceOrder = () => {
             <div className="col-md-7 col-lg-8">
               <h4 className="mb-3">Billing address</h4>
               <form className="needs-validation" noValidate onSubmit={onSubmitHandler}>
-                {/* FIX: Fieldset disables all child inputs when 'isProcessing' is true */}
+                {/* Fieldset disables all child inputs when 'isProcessing' is true */}
                 <fieldset disabled={isProcessing}>
                   <div className="row g-3">
                     {/* First Name Input Field */}
@@ -286,7 +290,7 @@ const PlaceOrder = () => {
                 <button 
                   className="w-100 btn btn-primary btn-lg" 
                   type="submit" 
-                  // FIX: Button is disabled during processing OR if the cart is empty
+                  // Button is disabled during processing OR if the cart is empty
                   disabled={isProcessing || cartItems.length === 0}
                 >
                   {isProcessing ? "Processing..." : "Continue to checkout"}

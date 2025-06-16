@@ -1,5 +1,6 @@
 package in.thanadon.foodiesapi.controller;
 
+import in.thanadon.foodiesapi.io.OrderPaymentStatusResponse;
 import in.thanadon.foodiesapi.io.OrderRequest;
 import in.thanadon.foodiesapi.io.OrderResponse;
 import in.thanadon.foodiesapi.io.RetryPaymentResponse;
@@ -12,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
+
 import java.net.URI;
 import java.util.List;
 
@@ -42,11 +43,11 @@ public class OrderController {
         try {
             orderService.executeAndFinalizeOrder(orderId, paymentId, payerId);
             // FIX: Redirect the popup back to a success page on the frontend
-            String redirectUrl = frontendUrl + "/verify-payment?success=true&orderId=" + orderId;
+            String redirectUrl = frontendUrl + "/verify-payment?orderId=" + orderId;
             return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
         } catch (Exception e) {
             // FIX: Redirect the popup to a failure page on the frontend
-            String redirectUrl = frontendUrl + "/verify-payment?success=false";
+            String redirectUrl = frontendUrl + "/verify-payment?orderId=" + orderId;
             return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
         }
     }
@@ -55,7 +56,7 @@ public class OrderController {
     public ResponseEntity<Void> paymentCancel(@RequestParam("orderId") String orderId) { // FIX: Changed return type
         orderService.cancelOrderPayment(orderId);
         // FIX: Redirect the popup to a "cancelled" page on the frontend
-        String redirectUrl = frontendUrl + "/verify-payment?success=false&cancelled=true";
+        String redirectUrl = frontendUrl + "/verify-payment?orderId=" + orderId;
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(redirectUrl)).build();
     }
 
@@ -65,6 +66,11 @@ public class OrderController {
 
         RetryPaymentResponse response = orderService.retryOrderPayment(orderId, urls.getCancelUrl(), urls.getSuccessUrl());
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/payment/status/{orderId}")
+    public ResponseEntity<?> getOrderStatus(@PathVariable String orderId) {
+            OrderPaymentStatusResponse statusResponse = orderService.getOrderPaymentStatusForCurrentUser(orderId);
+            return ResponseEntity.ok(statusResponse);
     }
 
     @GetMapping
@@ -84,11 +90,13 @@ public class OrderController {
         return orderService.getOrdersOfAllUser();
 
     }
+
     //admin panel
     @PatchMapping("/status/{orderId}")
     public void updateOrderStatus(@PathVariable String orderId, @RequestParam("status") String status) {
         orderService.updateOrderStatus(orderId, status);
     }
+
     /**
      * PRIVATE HELPER: Constructs the full success and cancel URLs for PayPal redirects.
      * This centralizes the logic to prevent duplication.
