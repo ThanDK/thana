@@ -16,7 +16,7 @@ const VerifyPayment = () => {
     message: "Verifying Payment...",
   });
 
-  // This useEffect and verifyPaymentStatus function are perfect and remain unchanged.
+
   useEffect(() => {
     const orderIdFromUrl = searchParams.get("orderId");
     if (orderIdFromUrl) {
@@ -31,15 +31,14 @@ const VerifyPayment = () => {
     try {
       const token = localStorage.getItem('token'); 
       const url = `http://localhost:8080/api/orders/payment/status/${orderId}`;
-      const response = await axios.get(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` }});
       const paymentStatus = response.data.paymentStatus;
 
       if (paymentStatus === "COMPLETED") {
         setStatus({ success: true, cancelled: false, loading: false, orderId: orderId, message: "Payment Successful!" });
       } else if (paymentStatus === "CANCELLED") {
         setStatus({ success: false, cancelled: true, loading: false, orderId: orderId, message: "Payment Cancelled" });
+        await deleteOrder(order.Id);
       } else {
         setStatus({ success: false, cancelled: false, loading: false, orderId: orderId, message: "Payment could not be confirmed." });
       }
@@ -53,12 +52,6 @@ const VerifyPayment = () => {
   // This is now a standard component return, not a separate function.
   return (
     <div className="verify-page">
-      {/* 
-        This is the nested ternary operator structure.
-        It reads: "Is it loading? If yes, show spinner. 
-        If no, is it successful? If yes, show success box.
-        If no, show the failure/cancel box."
-      */}
       {status.loading ? (
         // --- 1. Loading State ---
         <div className="verify-box">
@@ -66,6 +59,7 @@ const VerifyPayment = () => {
           <p className="loading-text">{status.message}</p>
         </div>
       ) : status.success ? (
+
         // --- 2. Success State ---
         <div className="verify-box">
           <div className="verify-header">
@@ -85,6 +79,7 @@ const VerifyPayment = () => {
           </div>
         </div>
       ) : (
+
         // --- 3. Failure or Cancellation State ---
         <div className="verify-box">
           <div className="verify-header">
