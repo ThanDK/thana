@@ -38,17 +38,14 @@ public class SecurityConfig {
                         // --- 1. PUBLIC ENDPOINTS ---
                         // Anyone can register, log in, or view food items. This is correct.
                         .requestMatchers("/api/register", "/api/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/foods/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/orders/payment/success", "/api/orders/payment/cancel").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/foods/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/orders/payment/success", "/api/orders/payment/cancel").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/orders/all").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/status/**").permitAll()
                         .requestMatchers("/api/orders/**").authenticated()
                         // --- 2. ADMIN-ONLY ENDPOINTS (Most Secure) ---
                         // Only users with the 'ADMIN' role can access these.
                         // PERMITALL FOR TEST PURPOSE!!! WILL CHANGE LATER
-                        .requestMatchers("/api/orders/all").permitAll()
-                        .requestMatchers(HttpMethod.PATCH, "/api/orders/status/**").permitAll()
-
-
-
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -8,7 +8,7 @@ import { StoreContext } from '../../context/StoreContext';
 const VerifyPayment = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { loadCartData } = useContext(StoreContext);
+  const { loadCartData, token } = useContext(StoreContext);
 
   // --- REVISED STATE ---
   // We'll use a string to represent the final state, which is clearer.
@@ -32,7 +32,6 @@ const VerifyPayment = () => {
   // This now sets the 'finalState' based on the specific API response.
   const verifyPaymentStatus = async (orderId) => {
     try {
-      const token = localStorage.getItem('token');
       const url = `http://localhost:8080/api/orders/payment/status/${orderId}`;
       const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
       const paymentStatus = response.data.paymentStatus;

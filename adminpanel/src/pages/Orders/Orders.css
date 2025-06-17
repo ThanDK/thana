@@ -1,0 +1,47 @@
+/* This is the main container for our orders list */
+.order-list-table {
+  width: 100%;
+  border-collapse: collapse; /* Makes borders look cleaner */
+}
+
+/* This is the most important rule! */
+/* It targets all cells in the table body */
+.order-list-table tbody td {
+  padding: 16px 8px; /* Add some nice spacing */
+  border-bottom: 1px solid #e0e0e0; /* A light line between rows */
+  vertical-align: top; /* ALIGNS EVERYTHING TO THE TOP! */
+}
+
+/* --- Specific Column Styling --- */
+
+/* Style the cell with the item list and address */
+.order-items-cell {
+  max-width: 400px; /* Set a max width to prevent it from getting too wide */
+  min-width: 250px; /* Give it a reasonable minimum width */
+  word-break: break-word; /* Force long words/text to wrap */
+}
+
+/* Make the icon cell smaller */
+.order-icon-cell {
+  width: 60px;
+}
+
+/* Style the cells that should not wrap their content */
+.order-data-cell {
+  white-space: nowrap; /* Prevents "Items: 2" from breaking into two lines */
+  text-align: left;
+}
+
+/* Style the cell with the status dropdown */
+.order-action-cell {
+  width: 150px; /* Give the dropdown a fixed width */
+}
+
+/* Improve the look of the select dropdown */
+.order-status-select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%; /* Make it fill the cell width */
+  background-color: #f9f9f9;
+}
